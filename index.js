@@ -31,15 +31,24 @@ const binanceKey = '8tc4fJ1ddM2VmnbFzTk3f7hXsrehnT8wP7u6EdIoVq7gyXWiL852TP1wnKp0
 rateOfChange: ((parseFloat(tick.c) - parseFloat(tick.x)) / parseFloat(tick.x)) * 100
 */
 
-const expMovingAvg = (prices, period) => {
+const expMovingAvg = (timesteps, period, label = 'EMA') => {
   const k = 2 / (period + 1);
   // first item is just the same as the first item in the input
   // for the rest of the items, they are computed with the previous one
-  const emaArray = [prices[0]];
-  for (let i = 1; i < prices.length; i++) {
-    emaArray.push(prices[i] * k + emaArray[i - 1] * (1 - k));
+  let emaArray = [];
+  if (timesteps[0][label] === undefined) emaArray = [{ ...timesteps[0], [label]: timesteps[0].price }];
+  else emaArray = [timesteps[0]];
+  for (let i = 1; i < timesteps.length; i++) {
+    if (timesteps[i][label] !== undefined) {
+      emaArray.push(timesteps[i]);
+    } else {
+      emaArray.push({
+        ...timesteps[i],
+        [label]: timesteps[i].price * k + emaArray[i - 1][label] * (1 - k)
+      });
+    }
   }
-  return emaArray[emaArray.length - 1];
+  return emaArray;
 };
 
 const diffNumbers = (num1, num2) => {
@@ -47,30 +56,30 @@ const diffNumbers = (num1, num2) => {
   else return num2 - num1;
 };
 
-const PERIOD_IN_SECONDS = 60;
+const PERIOD_IN_SECONDS = 1;
 const RSI_SMOOTHING = 3 * PERIOD_IN_SECONDS; // TODO: esto
-const relStrIndex = (prices, time) => {
+const relStrIndex = (timesteps, time, label = 'RSI') => {
   const rsiArray = [];
   let lastAvgGain = 0;
   let lastAvgLoss = 0;
-  prices.forEach((p, index) => {
+  timesteps.forEach((t, index) => {
     let tempGain = 0;
     let tempLoss = 0;
     if (index >= time) {
-      if (p > prices[index - 1]) {
-        tempGain = diffNumbers(p, prices[index - 1]);
+      if (t.price > timesteps[index - 1].price) {
+        tempGain = diffNumbers(t.price, timesteps[index - 1].price);
       } else {
-        tempLoss = diffNumbers(p, prices[index - 1]);
+        tempLoss = diffNumbers(t.price, timesteps[index - 1].price);
       }
       lastAvgGain = (lastAvgGain * (time - 1) + tempGain) / time;
       lastAvgLoss = (lastAvgLoss * (time - 1) + tempLoss) / time;
     } else {
       for (let i = index; i > index - time; i--) {
         if (i - 1 < 0) break;
-        if (prices[i] > prices[i - 1]) {
-          tempGain += diffNumbers(prices[i], prices[i - 1]);
+        if (timesteps[i].price > timesteps[i - 1].price) {
+          tempGain += diffNumbers(timesteps[i].price, timesteps[i - 1].price);
         } else {
-          tempLoss += diffNumbers(prices[i], prices[i - 1]);
+          tempLoss += diffNumbers(timesteps[i].price, timesteps[i - 1].price);
         }
       }
       lastAvgGain = tempGain / time;
@@ -78,35 +87,44 @@ const relStrIndex = (prices, time) => {
     }
     const firstRs = lastAvgGain / lastAvgLoss || 0;
     const firstRsi = 100 - 100 / (1 + firstRs);
-    rsiArray.push(index < time ? 0 : firstRsi);
+    rsiArray.push({
+      ...t,
+      [label]: index < time ? 0 : firstRsi
+    });
   });
   return rsiArray;
 };
 
-const stochRsi = (rsiArr, period) => {
+const stochRsi = (timesteps, period, label = 'STOCHRSI') => {
   // smooth it with a 3 minute MA
-  const stochsArr = rsiArr.reduce((res, rsi, index) => {
-    if (index - period + 1 < 0) return [...res, 0];
-    const rsiPeriod = rsiArr.slice(index - period + 1, index + 1); // inclusivo con el actual
+  const stochsArr = timesteps.reduce((res, t, index) => {
+    if (t[label] !== undefined) return [...res, t];
+    if (index - period + 1 < 0) return [...res, { ...t, [label]: { value: 0 } }];
+    const rsiPeriod = timesteps.slice(index - period + 1, index + 1).map(r => r.RSI); // inclusivo con el actual
     const lowestRsi = Math.min(...rsiPeriod);
     const highestRsi = Math.max(...rsiPeriod);
-    const stoch = (rsi - lowestRsi) / (highestRsi - lowestRsi) || 0;
-    return [...res, stoch * 100];
+    const stoch = (t.RSI - lowestRsi) / (highestRsi - lowestRsi) || 0;
+    return [...res, { ...t, [label]: { value: stoch * 100 } }];
   }, []);
   const percentKArr = stochsArr.map((s, index) => {
-    if (index - RSI_SMOOTHING + 1 < 0) return 0;
-    const stochPeriod = stochsArr.slice(index - RSI_SMOOTHING + 1, index + 1);
-    return stochPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING;
+    if (s[label] !== undefined && s[label].percentK !== undefined) return s;
+    if (index - RSI_SMOOTHING + 1 < 0) return { ...s, [label]: { ...s[label], percentK: 0 } };
+    const stochPeriod = stochsArr.slice(index - RSI_SMOOTHING + 1, index + 1).map(t => t[label].value);
+    return {
+      ...s,
+      [label]: { ...s[label], percentK: stochPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING }
+    };
   });
   const percentDArr = percentKArr.map((s, index) => {
-    if (index - RSI_SMOOTHING + 1 < 0) return 0;
-    const kPeriod = percentKArr.slice(index - RSI_SMOOTHING + 1, index + 1);
-    return kPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING;
+    if (s[label] !== undefined && s[label].percentD !== undefined) return s;
+    if (index - RSI_SMOOTHING + 1 < 0) return { ...s, [label]: { ...s[label], percentD: 0 } };
+    const kPeriod = percentKArr.slice(index - RSI_SMOOTHING + 1, index + 1).map(t => t[label].percentK);
+    return {
+      ...s,
+      [label]: { ...s[label], percentD: kPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING }
+    };
   });
-  return {
-    percentK: percentKArr[percentKArr.length - 1],
-    percentD: percentDArr[percentDArr.length - 1]
-  };
+  return percentDArr;
 };
 
 const getSymbolPrice = symbol => {
@@ -155,8 +173,8 @@ const formatInfo = (tickArray, trackerObj) => {
           currentClose: parseFloat(tick.c), // aka. currentPrice, market value
           volume: parseFloat(tick.v),
           tracker: res[tick.s]
-            ? [...res[tick.s].tracker, parseFloat(tick.c)].slice(-MAX_TRACK)
-            : [parseFloat(tick.c)].slice(-MAX_TRACK)
+            ? [...res[tick.s].tracker, { price: parseFloat(tick.c) }].slice(-MAX_TRACK)
+            : [{ price: parseFloat(tick.c) }].slice(-MAX_TRACK)
         }
       };
     } else {
@@ -164,7 +182,10 @@ const formatInfo = (tickArray, trackerObj) => {
         ...res,
         [key]: {
           ...res[key],
-          tracker: [...res[key].tracker, res[key].tracker[res[key].tracker.length - 1]].slice(-MAX_TRACK)
+          tracker: [
+            ...res[key].tracker,
+            { price: res[key].tracker[res[key].tracker.length - 1].price }
+          ].slice(-MAX_TRACK)
         }
       };
     }
@@ -173,16 +194,21 @@ const formatInfo = (tickArray, trackerObj) => {
 
 const formatDerivedFeatures = trackerObj => {
   return Object.keys(trackerObj).reduce((res, key) => {
-    const rsiArr = relStrIndex(trackerObj[key].tracker, 14 * PERIOD_IN_SECONDS);
+    trackerObj[key].tracker = relStrIndex(trackerObj[key].tracker, 14 * PERIOD_IN_SECONDS);
+    trackerObj[key].tracker = expMovingAvg(trackerObj[key].tracker, 8 * PERIOD_IN_SECONDS, 'EMA8');
+    trackerObj[key].tracker = expMovingAvg(trackerObj[key].tracker, 13 * PERIOD_IN_SECONDS, 'EMA13');
+    trackerObj[key].tracker = expMovingAvg(trackerObj[key].tracker, 21 * PERIOD_IN_SECONDS, 'EMA21');
+    trackerObj[key].tracker = expMovingAvg(trackerObj[key].tracker, 55 * PERIOD_IN_SECONDS, 'EMA55');
+    trackerObj[key].tracker = stochRsi(trackerObj[key].tracker, 14 * PERIOD_IN_SECONDS, 'STOCHRSI');
     return {
       ...res,
       [key]: {
         ...trackerObj[key],
-        STOCHRSI14: stochRsi(rsiArr, 14 * PERIOD_IN_SECONDS),
-        EMA8: expMovingAvg(trackerObj[key].tracker, 8 * PERIOD_IN_SECONDS),
-        EMA13: expMovingAvg(trackerObj[key].tracker, 13 * PERIOD_IN_SECONDS),
-        EMA21: expMovingAvg(trackerObj[key].tracker, 21 * PERIOD_IN_SECONDS),
-        EMA55: expMovingAvg(trackerObj[key].tracker, 55 * PERIOD_IN_SECONDS) // this is only for superbuy or supersell not a deal breaker
+        STOCHRSI: trackerObj[key].tracker[trackerObj[key].tracker.length - 1].STOCHRSI,
+        EMA8: trackerObj[key].tracker[trackerObj[key].tracker.length - 1].EMA8,
+        EMA13: trackerObj[key].tracker[trackerObj[key].tracker.length - 1].EMA13,
+        EMA21: trackerObj[key].tracker[trackerObj[key].tracker.length - 1].EMA21,
+        EMA55: trackerObj[key].tracker[trackerObj[key].tracker.length - 1].EMA55 // only super sell
       }
     };
   }, trackerObj);
@@ -192,7 +218,10 @@ const miniTickers = async () => {
   const graphSocket = await setGraphingServer();
   const tickers = new WebSocket(`wss://stream.binance.com:9443/ws/!ticker@arr`);
   const initialData = await fetchExchangeInfo();
-  let trackerObj = initialData.reduce((res, s) => ({ ...res, [s.symbol]: { tracker: [s.price] } }), {});
+  let trackerObj = initialData.reduce(
+    (res, s) => ({ ...res, [s.symbol]: { tracker: [{ price: s.price }] } }),
+    {}
+  );
   tickers.on('open', () => {
     console.log('opened connection to price tickers');
   });
