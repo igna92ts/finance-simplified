@@ -83,21 +83,30 @@ const relStrIndex = (prices, time) => {
   return rsiArray;
 };
 
-const stochRsi = (prices, period) => {
-  const rsiArr = [...relStrIndex(prices, period)];
-  if (rsiArr.length <= RSI_SMOOTHING) return 0;
+const stochRsi = (rsiArr, period) => {
   // smooth it with a 3 minute MA
-  const stochs = [];
-  for (let i = 0; i < RSI_SMOOTHING; i++) {
-    const rsiPeriod = rsiArr.slice(-period);
-    const rsi = rsiArr[rsiArr.length - 1];
+  const stochsArr = rsiArr.reduce((res, rsi, index) => {
+    if (index - period + 1 < 0) return [...res, 0];
+    const rsiPeriod = rsiArr.slice(index - period + 1, index + 1); // inclusivo con el actual
     const lowestRsi = Math.min(...rsiPeriod);
     const highestRsi = Math.max(...rsiPeriod);
     const stoch = (rsi - lowestRsi) / (highestRsi - lowestRsi) || 0;
-    stochs.push(stoch);
-    rsiArr.pop();
-  }
-  return stochs.reduce((res, s) => res + s, 0) / RSI_SMOOTHING;
+    return [...res, stoch * 100];
+  }, []);
+  const percentKArr = stochsArr.map((s, index) => {
+    if (index - RSI_SMOOTHING + 1 < 0) return 0;
+    const stochPeriod = stochsArr.slice(index - RSI_SMOOTHING + 1, index + 1);
+    return stochPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING;
+  });
+  const percentDArr = percentKArr.map((s, index) => {
+    if (index - RSI_SMOOTHING + 1 < 0) return 0;
+    const kPeriod = percentKArr.slice(index - RSI_SMOOTHING + 1, index + 1);
+    return kPeriod.reduce((sum, v) => sum + v, 0) / RSI_SMOOTHING;
+  });
+  return {
+    percentK: percentKArr[percentKArr.length - 1],
+    percentD: percentDArr[percentDArr.length - 1]
+  };
 };
 
 const getSymbolPrice = symbol => {
@@ -164,12 +173,12 @@ const formatInfo = (tickArray, trackerObj) => {
 
 const formatDerivedFeatures = trackerObj => {
   return Object.keys(trackerObj).reduce((res, key) => {
+    const rsiArr = relStrIndex(trackerObj[key].tracker, 14 * PERIOD_IN_SECONDS);
     return {
       ...res,
       [key]: {
         ...trackerObj[key],
-        STOCHRSI9: stochRsi(trackerObj[key].tracker, 9 * PERIOD_IN_SECONDS),
-        STOCHRSI14: stochRsi(trackerObj[key].tracker, 14 * PERIOD_IN_SECONDS),
+        STOCHRSI14: stochRsi(rsiArr, 14 * PERIOD_IN_SECONDS),
         EMA8: expMovingAvg(trackerObj[key].tracker, 8 * PERIOD_IN_SECONDS),
         EMA13: expMovingAvg(trackerObj[key].tracker, 13 * PERIOD_IN_SECONDS),
         EMA21: expMovingAvg(trackerObj[key].tracker, 21 * PERIOD_IN_SECONDS),

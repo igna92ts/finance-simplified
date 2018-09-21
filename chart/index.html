@@ -44,15 +44,15 @@
 
          var rsiData = [{
            x: [time],
-           y: [data.STOCHRSI9],
+           y: [data.STOCHRSI14.percentK],
            mode: 'lines',
-           name: 'STOCHRSI9',
+           name: 'K',
            line: {color: '#0000FF'}
          }, {
            x: [time],
-           y: [data.STOCHRSI14],
+           y: [data.STOCHRSI14.percentD],
            mode: 'lines',
-           name: 'STOCHRSI14',
+           name: 'D',
            line: {color: '#00FF00'}
          }]
          Plotly.plot('graph2', rsiData);
@@ -67,7 +67,7 @@
 
          var updateRsi = {
            x:  [[time], [time]],
-           y: [[data.STOCHRSI9], [data.STOCHRSI14]]
+           y: [[data.STOCHRSI14.percentK], [data.STOCHRSI14.percentD]]
          }
 
          Plotly.extendTraces('graph2', updateRsi, [0, 1])
