@@ -25,7 +25,7 @@ const binanceKey = '8tc4fJ1ddM2VmnbFzTk3f7hXsrehnT8wP7u6EdIoVq7gyXWiL852TP1wnKp0
 //   "B": "123456"   // Ignore
 
 const symbolVolumeFilter = async symbols => {
-  const MINIMUM_VOLUME = 800;
+  const MINIMUM_VOLUME = 500;
   const symbolStats = await Promise.all(
     symbols.map(s => {
       return request
@@ -40,7 +40,7 @@ const symbolVolumeFilter = async symbols => {
         .catch(console.log);
     })
   );
-  return symbolStats.filter(s => s.volume < MINIMUM_VOLUME).map(s => s.symbol);
+  return symbolStats.filter(s => s.volume > MINIMUM_VOLUME).map(s => s.symbol);
 };
 const fetchExchangeInfo = async () => {
   const QUOTE_ASSET = 'ETH';
