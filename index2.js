@@ -24,6 +24,42 @@ const binanceKey = '8tc4fJ1ddM2VmnbFzTk3f7hXsrehnT8wP7u6EdIoVq7gyXWiL852TP1wnKp0
 //   "Q": "0.500",   // Taker buy quote asset volume
 //   "B": "123456"   // Ignore
 
+const symbolVolumeFilter = async symbols => {
+  const symbolStats = await Promise.all(
+    symbols.map(s => {
+      return request
+        .get({
+          url: `https://api.binance.com/api/v1/ticker/24hr?symbol=${s}`,
+          headers: {
+            'X-MBX-APIKEY': binanceKey
+          },
+          json: true
+        })
+        .then(stats => ({ symbol: s, volume: parseFloat(stats.quoteVolume) }))
+        .catch(console.log);
+    })
+  );
+  return symbolStats.filter(s => s.volume < 500).map(s => s.symbol);
+};
+const fetchExchangeInfo = async () => {
+  const QUOTE_ASSET = 'ETH';
+  const exchangeInfo = await request
+    .get({
+      url: 'https://api.binance.com/api/v1/exchangeInfo',
+      headers: {
+        'X-MBX-APIKEY': binanceKey
+      },
+      json: true
+    })
+    .catch(console.log);
+  const symbols = exchangeInfo.symbols
+    .filter(s => s.status === 'TRADING')
+    .filter(s => s.quoteAsset === QUOTE_ASSET)
+    .map(s => s.symbol);
+  // tick.q (quote asset volume) at least 500
+  return symbolVolumeFilter(symbols);
+};
+
 const advancedFeatures = symbolTracker => {
   let tempTrack = [...symbolTracker.tracker, { price: symbolTracker.currentPrice }];
   tempTrack = relStrIndex(tempTrack, 14);
@@ -64,6 +100,7 @@ const setupKLineSocket = (symbol, cb) => {
       `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${K_LINE_INTERVAL}`
     );
     ticker.on('open', () => {
+      console.log(`OPENED CONNECTION TO ${symbol}`);
       ticker.on('message', kLineData => {
         cb(JSON.parse(kLineData).k);
       });
@@ -112,10 +149,10 @@ const checkBuySell = (symbol, symbolObj, previousAction) => {
   const { EMA8, EMA13, EMA21, EMA55, STOCHRSI } = symbolObj;
   const { percentK, percentD } = STOCHRSI;
   const orderedEma = EMA8 > EMA13 && EMA13 > EMA21 && EMA21 > EMA55;
-  const kOverD = percentK > percentD && percentK - percentD > 3;
-  const dBrake = percentD > percentK && percentD - percentK > 3;
   const percentsUnder20 = percentK < 20 && percentD < 20; // MIGHT ADD LATER
-  if (kOverD && orderedEma && previousAction !== 'BUY') {
+  const kOverD = percentK > percentD && percentK - percentD;
+  const dBrake = percentD > percentK && percentD - percentK > 3 && !percentsUnder20;
+  if (kOverD && orderedEma && previousAction !== 'BUY' && percentsUnder20) {
     operate(symbol, 'BUY', symbolObj.currentPrice);
     return { ...symbolObj, action: 'BUY' };
   } else if (previousAction === 'BUY' && dBrake) {
@@ -157,7 +194,8 @@ const setKLineSockets = (symbols, trackerObj, graphSocket) => {
 const run = async () => {
   const graphSocket = await setGraphingServer();
   const trackerObj = {};
-  await setKLineSockets(['NANOETH', 'XRPETH', 'VIBEETH', 'ADAETH'], trackerObj, graphSocket);
+  const symbols = await fetchExchangeInfo();
+  await setKLineSockets(symbols, trackerObj, graphSocket);
 };
 
 run();
