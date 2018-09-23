@@ -214,6 +214,30 @@ const formatDerivedFeatures = trackerObj => {
   }, trackerObj);
 };
 
+const setupKLineSocket = (symbol, cb) => {
+  const K_LINE_INTERVAL = 1; // MINUTES
+  return new Promise((resolve, reject) => {
+    const ticker = new WebSocket(
+      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${K_LINE_INTERVAL}m`
+    );
+    ticker.on('open', () => {
+      ticker.on('message', kLineData => {
+        cb(JSON.parse(kLineData));
+      });
+      resolve(ticker);
+    });
+  });
+};
+
+const setKLineSockets = symbols => {
+  const promises = symbols.map(s => {
+    return setupKLineSocket(s, kLineData => {
+      console.log(kLineData);
+    });
+  });
+  return Promise.all(promises);
+};
+
 const miniTickers = async () => {
   const graphSocket = await setGraphingServer();
   const tickers = new WebSocket(`wss://stream.binance.com:9443/ws/!ticker@arr`);
@@ -227,12 +251,13 @@ const miniTickers = async () => {
   });
   tickers.on('message', rawData => {
     const data = JSON.parse(rawData);
+    console.log(data.filter(d => parseFloat(d.q) < 100));
     trackerObj = formatInfo(data, trackerObj);
     trackerObj = formatDerivedFeatures(trackerObj);
     graphSocket({ ...trackerObj.XRPETH, tracker: [] });
   });
 };
 
-miniTickers();
+setKLineSockets(['ENJBTC']);
 
 module.exports = { miniTickers, expMovingAvg, relStrIndex, stochRsi };
