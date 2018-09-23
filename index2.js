@@ -121,11 +121,11 @@ const checkBuySell = (symbol, symbolObj, previousAction) => {
     operate(symbol, 'SELL', symbolObj.currentPrice);
     return { ...symbolObj, action: 'SELL' };
   } else {
-    return { ...symbolObj, action: 'NOTHING' };
+    return symbolObj;
   }
 };
 
-const debug = 'NANOETH';
+const debug = '';
 const processKLineData = (kLineData, trackerObj, graphSocket) => {
   const symbol = kLineData.s;
   trackerObj[symbol] = {
@@ -156,7 +156,7 @@ const setKLineSockets = (symbols, trackerObj, graphSocket) => {
 const run = async () => {
   const graphSocket = await setGraphingServer();
   const trackerObj = {};
-  await setKLineSockets(['NANOETH'], trackerObj, graphSocket);
+  await setKLineSockets(['NANOETH', 'XRPETH', 'VIBEETH', 'ADAETH'], trackerObj, graphSocket);
 };
 
 run();
