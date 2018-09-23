@@ -25,6 +25,7 @@ const binanceKey = '8tc4fJ1ddM2VmnbFzTk3f7hXsrehnT8wP7u6EdIoVq7gyXWiL852TP1wnKp0
 //   "B": "123456"   // Ignore
 
 const symbolVolumeFilter = async symbols => {
+  const MINIMUM_VOLUME = 800;
   const symbolStats = await Promise.all(
     symbols.map(s => {
       return request
@@ -39,7 +40,7 @@ const symbolVolumeFilter = async symbols => {
         .catch(console.log);
     })
   );
-  return symbolStats.filter(s => s.volume < 500).map(s => s.symbol);
+  return symbolStats.filter(s => s.volume < MINIMUM_VOLUME).map(s => s.symbol);
 };
 const fetchExchangeInfo = async () => {
   const QUOTE_ASSET = 'ETH';
@@ -155,7 +156,7 @@ const checkBuySell = (symbol, symbolObj, previousAction) => {
   if (kOverD && orderedEma && previousAction !== 'BUY' && percentsUnder20) {
     operate(symbol, 'BUY', symbolObj.currentPrice);
     return { ...symbolObj, action: 'BUY' };
-  } else if (previousAction === 'BUY' && dBrake) {
+  } else if (previousAction === 'BUY' && (dBrake || !orderedEma)) {
     operate(symbol, 'SELL', symbolObj.currentPrice);
     return { ...symbolObj, action: 'SELL' };
   } else {
