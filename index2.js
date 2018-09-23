@@ -69,6 +69,10 @@ const setupKLineSocket = (symbol, cb) => {
       });
       resolve(ticker);
     });
+    ticker.on('error', err => {
+      console.log(err);
+      throw err;
+    });
   });
 };
 
@@ -86,7 +90,42 @@ const checkOpen = (tracker, kline) => {
   }
 };
 
-const debug = 'XRPETH';
+const money = {
+  ETH: 5
+};
+const operate = (symbol, action, currentPrice) => {
+  if (money[symbol]) money[symbol] = 0;
+  const fees = 0.001;
+  const buyAmount = 0.1;
+  if (action === 'BUY' && money.USD > 0) {
+    money[symbol] += (money.ETH * buyAmount) / (currentPrice + currentPrice * fees);
+    money.ETH -= money.eth * buyAmount;
+  }
+  if (action === 'SELL') {
+    money.ETH += money[symbol] * (currentPrice - currentPrice * fees);
+    money[symbol] = 0;
+  }
+};
+
+const checkBuySell = (symbol, symbolObj, previousAction) => {
+  const { EMA8, EMA13, EMA21, EMA55, STOCHRSI } = symbolObj;
+  const { percentK, percentD } = STOCHRSI;
+  const orderedEma = EMA8 > EMA13 && EMA13 > EMA21 && EMA21 > EMA55;
+  const kOverD = percentK > percentD && percentK - percentD > 3;
+  const dBrake = percentD > percentK && percentD - percentK > 3;
+  const percentsUnder20 = percentK < 20 && percentD < 20; // MIGHT ADD LATER
+  if (kOverD && orderedEma && previousAction !== 'BUY') {
+    operate(symbol, 'BUY', symbolObj.currentPrice);
+    return { ...symbolObj, action: 'BUY' };
+  } else if (previousAction === 'BUY' && dBrake) {
+    operate(symbol, 'SELL', symbolObj.currentPrice);
+    return { ...symbolObj, action: 'SELL' };
+  } else {
+    return { ...symbolObj, action: 'NOTHING' };
+  }
+};
+
+const debug = 'NANOETH';
 const processKLineData = (kLineData, trackerObj, graphSocket) => {
   const symbol = kLineData.s;
   trackerObj[symbol] = {
@@ -95,14 +134,20 @@ const processKLineData = (kLineData, trackerObj, graphSocket) => {
     tracker: checkOpen(trackerObj[symbol].tracker, kLineData)
   };
   trackerObj[symbol] = advancedFeatures(trackerObj[symbol]);
-  console.log(JSON.stringify(trackerObj, 0, 2));
+  if (kLineData.x) {
+    trackerObj[symbol] = checkBuySell(symbol, trackerObj[symbol], trackerObj[symbol].action);
+  }
   if (debug === symbol && kLineData.x) graphSocket({ ...trackerObj[symbol], tracker: [] });
 };
 
 const setKLineSockets = (symbols, trackerObj, graphSocket) => {
   const promises = symbols.map(async s => {
     const kLineHistory = await getKLineHistory(s);
-    trackerObj[s] = { currentPrice: kLineHistory[kLineHistory.length - 1].price, tracker: kLineHistory };
+    trackerObj[s] = {
+      currentPrice: kLineHistory[kLineHistory.length - 1].price,
+      tracker: kLineHistory,
+      action: 'NOTHING'
+    };
     return setupKLineSocket(s, kLineData => processKLineData(kLineData, trackerObj, graphSocket));
   });
   return Promise.all(promises);
@@ -111,7 +156,7 @@ const setKLineSockets = (symbols, trackerObj, graphSocket) => {
 const run = async () => {
   const graphSocket = await setGraphingServer();
   const trackerObj = {};
-  await setKLineSockets(['XRPETH'], trackerObj, graphSocket);
+  await setKLineSockets(['NANOETH'], trackerObj, graphSocket);
 };
 
 run();
