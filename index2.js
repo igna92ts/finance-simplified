@@ -105,6 +105,7 @@ const operate = (symbol, action, currentPrice) => {
     money.ETH += money[symbol] * (currentPrice - currentPrice * fees);
     money[symbol] = 0;
   }
+  console.log(JSON.stringify(money, 0, 2));
 };
 
 const checkBuySell = (symbol, symbolObj, previousAction) => {
