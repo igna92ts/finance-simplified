@@ -94,12 +94,12 @@ const money = {
   ETH: 5
 };
 const operate = (symbol, action, currentPrice) => {
-  if (money[symbol]) money[symbol] = 0;
+  if (money[symbol] === undefined) money[symbol] = 0;
   const fees = 0.001;
   const buyAmount = 0.1;
-  if (action === 'BUY' && money.USD > 0) {
+  if (action === 'BUY' && money.ETH > 0) {
     money[symbol] += (money.ETH * buyAmount) / (currentPrice + currentPrice * fees);
-    money.ETH -= money.eth * buyAmount;
+    money.ETH -= money.ETH * buyAmount;
   }
   if (action === 'SELL') {
     money.ETH += money[symbol] * (currentPrice - currentPrice * fees);
