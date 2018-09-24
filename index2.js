@@ -81,7 +81,7 @@ const advancedFeatures = symbolTracker => {
   };
 };
 
-const K_LINE_INTERVAL = '1m'; // MINUTES
+const K_LINE_INTERVAL = '5m'; // MINUTES
 const getKLineHistory = symbol => {
   return request
     .get({
@@ -150,21 +150,31 @@ const checkBuySell = (symbol, symbolObj, previousAction) => {
   const { EMA8, EMA13, EMA21, EMA55, STOCHRSI } = symbolObj;
   const { percentK, percentD } = STOCHRSI;
   const orderedEma = EMA8 > EMA13 && EMA13 > EMA21 && EMA21 > EMA55;
-  const percentsUnder20 = percentK < 20 && percentD < 20; // MIGHT ADD LATER
-  const kOverD = percentK > percentD && percentK - percentD;
-  const dBrake = percentD > percentK && percentD - percentK > 3 && !percentsUnder20;
-  if (kOverD && orderedEma && previousAction !== 'BUY' && percentsUnder20) {
+  const kOverD = percentK > percentD && percentK - percentD > 1;
+  const dBrake = percentD > percentK && percentK < 80;
+  const previousPercentK = symbolObj.tracker[symbolObj.tracker.length - 2].STOCHRSI.percentK;
+  const previousPercentD = symbolObj.tracker[symbolObj.tracker.length - 2].STOCHRSI.percentD;
+  const isRising = previousPercentK < percentK && previousPercentD > previousPercentK; // if it is smaller the its rising and previous timestep percentK broke out
+  if (kOverD && orderedEma && previousAction !== 'BUY' && isRising) {
     operate(symbol, 'BUY', symbolObj.currentPrice);
     return { ...symbolObj, action: 'BUY' };
-  } else if (previousAction === 'BUY' && (dBrake || !orderedEma)) {
+  }
+  if (previousAction === 'BUY' && (dBrake || !orderedEma)) {
     operate(symbol, 'SELL', symbolObj.currentPrice);
     return { ...symbolObj, action: 'SELL' };
-  } else {
-    return symbolObj;
   }
+  return symbolObj;
 };
 
-const debug = '';
+const printMoney = trackerObj => {
+  const amount = Object.keys(money).reduce((res, k) => {
+    if (k === 'ETH') return res + money[k];
+    else return res + money[k] * trackerObj[k].currentPrice;
+  }, 0);
+  console.log(amount);
+};
+
+const debug = 'XRPETH';
 const processKLineData = (kLineData, trackerObj, graphSocket) => {
   const symbol = kLineData.s;
   trackerObj[symbol] = {
@@ -175,6 +185,7 @@ const processKLineData = (kLineData, trackerObj, graphSocket) => {
   trackerObj[symbol] = advancedFeatures(trackerObj[symbol]);
   if (kLineData.x) {
     trackerObj[symbol] = checkBuySell(symbol, trackerObj[symbol], trackerObj[symbol].action);
+    printMoney(trackerObj);
   }
   if (debug === symbol && kLineData.x) graphSocket({ ...trackerObj[symbol], tracker: [] });
 };
