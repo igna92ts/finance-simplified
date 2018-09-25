@@ -19,6 +19,7 @@ const advancedFeatures = symbolTracker => {
     EMA21: lastResult.EMA21,
     EMA55: lastResult.EMA55,
     STOCHRSI: lastResult.STOCHRSI,
+    RSI: lastResult.RSI,
     tracker: tempTrack
   };
 };
@@ -66,7 +67,8 @@ const checkBuySell = (symbol, symbolObj, previousAction) => {
   const previousRsi = symbolObj.tracker[symbolObj.tracker.length - 2].RSI;
   const isRising = previousPercentK < percentK && previousPercentD > previousPercentK; // if it is smaller the its rising and previous timestep percentK broke out
   const emaCross = EMA8 < EMA13;
-  if (/* kOverD && orderedEma && previousAction !== 'BUY' && isRising */kOverD && orderedEma && RSI > 50 && previousRsi < RSI && previousAction !== 'BUY') {
+  const rsiOver50AndRising = RSI > 50 && previousRsi < RSI;
+  if (/* kOverD && orderedEma && previousAction !== 'BUY' && isRising */kOverD && orderedEma && rsiOver50AndRising && previousAction !== 'BUY') {
     operate(symbol, 'BUY', symbolObj.currentPrice);
     return { ...symbolObj, action: 'BUY' };
   }
