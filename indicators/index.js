@@ -1,3 +1,22 @@
+const smoothRsi = (timesteps, time, label = 'SMOOTHRSI') => {
+  return timesteps.map((t, index) => {
+    if (t[label] !== undefined) return t;
+    let temp = 0;
+    let divider = time;
+    for (let i = index; i > index - time; i--) {
+      if (i < 0) {
+        divider = index + 1;
+        break;
+      } else divider = time;
+      temp += timesteps[i].RSI;
+    }
+    return {
+      ...t,
+      [label]: temp / divider
+    };
+  });
+};
+
 const stochRsi = (timesteps, period, label = 'STOCHRSI') => {
   // smooth it with a 3 minute MA
   const RSI_SMOOTHING = 3;
@@ -93,4 +112,4 @@ const relStrIndex = (timesteps, time, label = 'RSI') => {
   return rsiArray;
 };
 
-module.exports = { expMovingAvg, relStrIndex, stochRsi };
+module.exports = { expMovingAvg, relStrIndex, stochRsi, smoothRsi };

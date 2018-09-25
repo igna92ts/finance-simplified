@@ -1,65 +1,6 @@
-const request = require('request-promise'),
-  WebSocket = require('ws'),
-  { setGraphingServer } = require('./chart'),
-  { relStrIndex, expMovingAvg, stochRsi } = require('./indicators');
-
-const binanceKey = '8tc4fJ1ddM2VmnbFzTk3f7hXsrehnT8wP7u6EdIoVq7gyXWiL852TP1wnKp0qaGM';
-
-// "k": {
-//   "t": 123400000, // Kline start time
-//   "T": 123460000, // Kline close time
-//   "s": "BNBBTC",  // Symbol
-//   "i": "1m",      // Interval
-//   "f": 100,       // First trade ID
-//   "L": 200,       // Last trade ID
-//   "o": "0.0010",  // Open price
-//   "c": "0.0020",  // Close price
-//   "h": "0.0025",  // High price
-//   "l": "0.0015",  // Low price
-//   "v": "1000",    // Base asset volume
-//   "n": 100,       // Number of trades
-//   "x": false,     // Is this kline closed?
-//   "q": "1.0000",  // Quote asset volume
-//   "V": "500",     // Taker buy base asset volume
-//   "Q": "0.500",   // Taker buy quote asset volume
-//   "B": "123456"   // Ignore
-
-const symbolVolumeFilter = async symbols => {
-  const MINIMUM_VOLUME = 500;
-  const symbolStats = await Promise.all(
-    symbols.map(s => {
-      return request
-        .get({
-          url: `https://api.binance.com/api/v1/ticker/24hr?symbol=${s}`,
-          headers: {
-            'X-MBX-APIKEY': binanceKey
-          },
-          json: true
-        })
-        .then(stats => ({ symbol: s, volume: parseFloat(stats.quoteVolume) }))
-        .catch(console.log);
-    })
-  );
-  return symbolStats.filter(s => s.volume > MINIMUM_VOLUME).map(s => s.symbol);
-};
-const fetchExchangeInfo = async () => {
-  const QUOTE_ASSET = 'ETH';
-  const exchangeInfo = await request
-    .get({
-      url: 'https://api.binance.com/api/v1/exchangeInfo',
-      headers: {
-        'X-MBX-APIKEY': binanceKey
-      },
-      json: true
-    })
-    .catch(console.log);
-  const symbols = exchangeInfo.symbols
-    .filter(s => s.status === 'TRADING')
-    .filter(s => s.quoteAsset === QUOTE_ASSET)
-    .map(s => s.symbol);
-  // tick.q (quote asset volume) at least 500
-  return symbolVolumeFilter(symbols);
-};
+const { setGraphingServer } = require('./chart'),
+  { relStrIndex, expMovingAvg, stochRsi } = require('./indicators'),
+  { setupKLineSocket, fetchExchangeInfo, getKLineHistory } = require('./binance');
 
 const advancedFeatures = symbolTracker => {
   let tempTrack = [...symbolTracker.tracker, { price: symbolTracker.currentPrice }];
@@ -79,39 +20,6 @@ const advancedFeatures = symbolTracker => {
     STOCHRSI: lastResult.STOCHRSI,
     tracker: tempTrack
   };
-};
-
-const K_LINE_INTERVAL = '5m'; // MINUTES
-const getKLineHistory = symbol => {
-  return request
-    .get({
-      url: `https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=${K_LINE_INTERVAL}&limit=100`,
-      headers: {
-        'X-MBX-APIKEY': binanceKey
-      },
-      json: true
-    })
-    .then(kLineData => kLineData.map(k => ({ id: k[0], price: parseFloat(k[4]), closeTime: k[6] })))
-    .catch(console.log);
-};
-
-const setupKLineSocket = (symbol, cb) => {
-  return new Promise((resolve, reject) => {
-    const ticker = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${K_LINE_INTERVAL}`
-    );
-    ticker.on('open', () => {
-      console.log(`OPENED CONNECTION TO ${symbol}`);
-      ticker.on('message', kLineData => {
-        cb(JSON.parse(kLineData).k);
-      });
-      resolve(ticker);
-    });
-    ticker.on('error', err => {
-      console.log(err);
-      throw err;
-    });
-  });
 };
 
 const checkOpen = (tracker, kline) => {
@@ -210,4 +118,4 @@ const run = async () => {
   await setKLineSockets(symbols, trackerObj, graphSocket);
 };
 
-run();
+module.exports = { checkBuySell };
