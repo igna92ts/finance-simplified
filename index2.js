@@ -29,7 +29,9 @@ const printMoney = trackerObj => {
 
 const checkBuySell = (symbol, symbolObj, previousAction) => {
   if (!previousAction) throw new Error('NO PREVIOUS ACTION');
-  const { MFI14, ADX14, EMA8, EMA13, EMA21, EMA55, RSI14, price } = symbolObj;
+  const { MFI14, ADX14, EMA8, EMA13, EMA21, EMA55, RSI14, price } = symbolObj.tracker[
+    symbolObj.tracker.length - 1
+  ];
   const orderedEma = EMA8 > EMA13 && EMA13 > EMA21;
   const previousRsi = symbolObj.tracker[symbolObj.tracker.length - 2].RSI14;
   const previousMfi = symbolObj.tracker[symbolObj.tracker.length - 2].MFI14;

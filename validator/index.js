@@ -4,7 +4,7 @@ const { MFI, SMA, EMA, RSI, ADX } = require('technicalindicators'),
   { graphToImg } = require('../chart');
 
 const run = async () => {
-  const symbol = 'XRPETH';
+  const symbol = 'ADAETH';
   let historicalLines = await getKLineHistory(symbol, 500);
   const prices = historicalLines.map(t => t.price);
   const high = historicalLines.map(t => t.highPrice);
