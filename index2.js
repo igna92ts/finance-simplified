@@ -1,4 +1,4 @@
-const { EMA, RSI, ADX } = require('technicalindicators'),
+const { MFI, EMA, RSI, ADX } = require('technicalindicators'),
   { setupKLineSocket, fetchExchangeInfo, getKLineHistory } = require('./binance');
 
 const money = {
@@ -65,12 +65,23 @@ const advancedFeatures = tracker => {
   const prices = tempTrack.map(t => t.price);
   const high = tempTrack.map(t => t.highPrice);
   const low = tempTrack.map(t => t.lowPrice);
+  const volume = tempTrack.map(t => t.volume);
   tempTrack = assignIndicator(tempTrack, EMA.calculate({ period: 8, values: prices }), 'EMA8');
   tempTrack = assignIndicator(tempTrack, EMA.calculate({ period: 13, values: prices }), 'EMA13');
   tempTrack = assignIndicator(tempTrack, EMA.calculate({ period: 21, values: prices }), 'EMA21');
   tempTrack = assignIndicator(tempTrack, EMA.calculate({ period: 55, values: prices }), 'EMA55');
-  tempTrack = assignIndicator(tempTrack, RSI.calculate({ period: 14, values: prices }), 'RSI14');
-  tempTrack = assignIndicator(tempTrack, ADX.calculate({ period: 14, close: prices, high, low }), 'ADX');
+  const rsi = RSI.calculate({ period: 14, values: prices });
+  tempTrack = assignIndicator(tempTrack, rsi, 'RSI14');
+  tempTrack = assignIndicator(
+    tempTrack,
+    ADX.calculate({ period: 14, close: prices, high, low }).map(e => e.adx),
+    'ADX14'
+  );
+  tempTrack = assignIndicator(
+    tempTrack,
+    MFI.calculate({ period: 14, volume, high, low, close: prices }),
+    'MFI14'
+  );
   return tempTrack;
 };
 
@@ -91,7 +102,7 @@ const processKLineData = (kLineData, trackerObj) => {
         ]
       : trackerObj[symbol].tracker
   };
-  trackerObj[symbol] = advancedFeatures(trackerObj[symbol].tracker);
+  trackerObj[symbol].tracker = advancedFeatures(trackerObj[symbol].tracker);
   if (kLineData.x) {
     trackerObj[symbol] = checkBuySell(symbol, trackerObj[symbol], trackerObj[symbol].action);
     printMoney(trackerObj);
