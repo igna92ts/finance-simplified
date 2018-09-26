@@ -63,7 +63,7 @@ exports.graphToImg = kLineArr => {
       y: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => k.price),
       mode: 'markers',
       name: 'BUY',
-      marker: { color: '#00FF00' }
+      marker: { color: '#FF0000', size: 12 }
     },
     {
       x: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => new Date(k.id)),
@@ -99,21 +99,40 @@ exports.graphToImg = kLineArr => {
     // },
     {
       x: dates,
-      y: kLineArr.map(k => k.RSI),
+      y: kLineArr.map(k => k.RSI14),
       mode: 'lines',
-      name: 'RSI',
+      name: 'RSI14',
       line: { color: '#00FF00' },
       xaxis: 'x2',
       yaxis: 'y2'
+    },
+    {
+      x: dates,
+      y: kLineArr.map(k => k.ADX14),
+      mode: 'lines',
+      name: 'ADX14',
+      line: { color: '#FF0000' },
+      xaxis: 'x3',
+      yaxis: 'y3'
+    },
+    {
+      x: dates,
+      y: kLineArr.map(k => k.MFI14),
+      mode: 'lines',
+      name: 'MFI14',
+      line: { color: '#00FF00' },
+      xaxis: 'x3',
+      yaxis: 'y3'
     }
   ];
   const layout = {
-    yaxis: { domain: [0, 0.45] },
+    yaxis: { domain: [0, 0.266] },
     legend: { traceorder: 'reversed' },
+    xaxis3: { anchor: 'y3' },
     xaxis2: { anchor: 'y2' },
-    yaxis2: { domain: [0.45, 0.9] }
+    yaxis2: { domain: [0.366, 0.633] },
+    yaxis3: { domain: [0.733, 1] }
   };
-
   const figure = { data: traces, layout };
   const imgOptions = {
     format: 'png',
@@ -122,7 +141,7 @@ exports.graphToImg = kLineArr => {
   };
   plotly.getImage(figure, imgOptions, (error, imageStream) => {
     if (error) console.log(error);
-    const fileStream = fs.createWriteStream(`plot${Date.now()}.png`);
+    const fileStream = fs.createWriteStream(`plot.png`);
     imageStream.pipe(fileStream);
   });
 };

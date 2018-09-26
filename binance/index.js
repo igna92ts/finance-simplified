@@ -69,7 +69,16 @@ const getKLineHistory = (symbol, limit = 100) => {
       },
       json: true
     })
-    .then(kLineData => kLineData.map(k => ({ id: k[0], price: parseFloat(k[4]), closeTime: k[6] })))
+    .then(kLineData =>
+      kLineData.map(k => ({
+        id: k[0],
+        highPrice: parseFloat(k[2]),
+        lowPrice: parseFloat(k[3]),
+        price: parseFloat(k[4]),
+        closeTime: k[6],
+        volume: parseFloat(k[5])
+      }))
+    )
     .catch(console.log);
 };
 

@@ -1,16 +1,15 @@
 const { setGraphingServer } = require('./chart'),
-  { relStrIndex, expMovingAvg, stochRsi, smoothRsi } = require('./indicators'),
   { setupKLineSocket, fetchExchangeInfo, getKLineHistory } = require('./binance');
 
 const advancedFeatures = symbolTracker => {
   let tempTrack = [...symbolTracker.tracker, { price: symbolTracker.currentPrice }];
-  tempTrack = relStrIndex(tempTrack, 14);
-  tempTrack = expMovingAvg(tempTrack, 8, 'EMA8');
-  tempTrack = expMovingAvg(tempTrack, 13, 'EMA13');
-  tempTrack = expMovingAvg(tempTrack, 21, 'EMA21');
-  tempTrack = expMovingAvg(tempTrack, 55, 'EMA55');
-  tempTrack = stochRsi(tempTrack, 14, 'STOCHRSI');
-  tempTrack = smoothRsi(tempTrack, 14).map(h => ({ ...h, RSI: h.SMOOTHRSI }));
+  // tempTrack = relStrIndex(tempTrack, 14);
+  // tempTrack = expMovingAvg(tempTrack, 8, 'EMA8');
+  // tempTrack = expMovingAvg(tempTrack, 13, 'EMA13');
+  // tempTrack = expMovingAvg(tempTrack, 21, 'EMA21');
+  // tempTrack = expMovingAvg(tempTrack, 55, 'EMA55');
+  // tempTrack = stochRsi(tempTrack, 14, 'STOCHRSI');
+  // tempTrack = smoothRsi(tempTrack, 14).map(h => ({ ...h, RSI: h.SMOOTHRSI }));
   const lastResult = tempTrack.pop();
   return {
     ...symbolTracker,
@@ -122,7 +121,5 @@ const run = async () => {
   const symbols = await fetchExchangeInfo();
   await setKLineSockets(symbols, trackerObj, graphSocket);
 };
-
-run();
 
 module.exports = { checkBuySell };

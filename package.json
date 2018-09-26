@@ -15,6 +15,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.2",
     "socket.io": "^2.1.1",
+    "technicalindicators": "^1.1.13",
     "ws": "^6.0.0"
   },
   "devDependencies": {
