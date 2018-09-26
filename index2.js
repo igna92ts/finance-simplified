@@ -19,6 +19,14 @@ const operate = (symbol, action, currentPrice) => {
   console.log(JSON.stringify(money, 0, 2));
 };
 
+const printMoney = trackerObj => {
+  const amount = Object.keys(money).reduce((res, k) => {
+    if (k === 'ETH') return res + money[k];
+    else return res + money[k] * trackerObj[k].tracker[trackerObj[k].tracker.length - 1].price;
+  }, 0);
+  console.log(amount);
+};
+
 const checkBuySell = (symbol, symbolObj, previousAction) => {
   if (!previousAction) throw new Error('NO PREVIOUS ACTION');
   const { MFI14, ADX14, EMA8, EMA13, EMA21, EMA55, RSI14, price } = symbolObj;
@@ -84,10 +92,10 @@ const processKLineData = (kLineData, trackerObj) => {
       : trackerObj[symbol].tracker
   };
   trackerObj[symbol] = advancedFeatures(trackerObj[symbol].tracker);
-  // if (kLineData.x) {
-  //   trackerObj[symbol] = checkBuySell(symbol, trackerObj[symbol], trackerObj[symbol].action);
-  //   printMoney(trackerObj);
-  // }
+  if (kLineData.x) {
+    trackerObj[symbol] = checkBuySell(symbol, trackerObj[symbol], trackerObj[symbol].action);
+    printMoney(trackerObj);
+  }
 };
 
 const setKLineSockets = (symbols, trackerObj) => {
@@ -107,5 +115,7 @@ const run = async () => {
   const symbols = await fetchExchangeInfo();
   await setKLineSockets(symbols, trackerObj);
 };
+
+run();
 
 module.exports = { assignIndicator, checkBuySell };
