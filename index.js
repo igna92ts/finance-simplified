@@ -23,7 +23,12 @@ const processKLineData = (kLineData, trackerObj) => {
   if (kLineData.x) {
     trackerObj[symbol].tracker = advancedFeatures(trackerObj[symbol].tracker);
     trackerObj[symbol].action = trackerObj[symbol].tracker[trackerObj[symbol].tracker.length - 1].action;
-    if (trackerObj[symbol].action === 'BUY') console.log(symbol);
+    console.log(
+      JSON.stringify({
+        SELL: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'SELL'),
+        BUY: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'BUY')
+      })
+    );
   }
 };
 
