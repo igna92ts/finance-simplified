@@ -1,6 +1,6 @@
 const http = require('http'),
   socketio = require('socket.io'),
-  plotly = require('plotly')('igna92ts', 'Bo8oB339TxAmrjQn5sBa'),
+  plotly = require('plotly')('igna92ts', 'RN0DdzqHUxNglJiMPRgr'),
   fs = require('fs');
 
 exports.setGraphingServer = () => {
@@ -25,7 +25,30 @@ exports.setGraphingServer = () => {
   });
 };
 
-exports.graphToImg = kLineArr => {
+exports.lineGraph = (fileName = 'line', dataSets) => {
+  const traces = dataSets.map(d => {
+    const { name, values } = d;
+    return {
+      x: values.map((v, index) => index),
+      y: values,
+      mode: 'lines',
+      name
+    };
+  });
+  const imgOptions = {
+    format: 'png',
+    width: 3000,
+    height: 2000
+  };
+  const figure = { data: traces };
+  plotly.getImage(figure, imgOptions, (error, imageStream) => {
+    if (error) console.log(error);
+    const fileStream = fs.createWriteStream(`${fileName}.png`);
+    imageStream.pipe(fileStream);
+  });
+};
+
+exports.graphToImg = (kLineArr, fileName = 'plot') => {
   const dates = kLineArr.map(k => new Date(k.id));
   const traces = [
     {
@@ -60,43 +83,27 @@ exports.graphToImg = kLineArr => {
     },
     {
       x: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => new Date(k.id)),
-      y: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => k.price),
+      y: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => k.close),
       mode: 'markers',
       name: 'BUY',
-      marker: { color: '#FF0000', size: 12 }
+      marker: { color: '#FF0000' }
     },
     {
       x: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => new Date(k.id)),
-      y: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => k.price),
+      y: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => k.close),
       mode: 'markers',
       name: 'SELL',
       marker: { color: '#000000' }
     },
-    // {
-    //   x: kLineArr.filter(k => k.action && k.action === 'NOTHING').map(k => new Date(k.id)),
-    //   y: kLineArr.filter(k => k.action && k.action === 'NOTHING').map(k => k.price),
-    //   mode: 'markers',
-    //   name: 'NOTHING',
-    //   marker: { color: '#000000' }
-    // },
-    // {
-    //   x: dates,
-    //   y: kLineArr.map(k => k.STOCHRSI.percentK),
-    //   mode: 'lines',
-    //   name: 'K',
-    //   line: { color: '#0000FF' },
-    //   xaxis: 'x2',
-    //   yaxis: 'y2'
-    // },
-    // {
-    //   x: dates,
-    //   y: kLineArr.map(k => k.STOCHRSI.percentD),
-    //   mode: 'lines',
-    //   name: 'D',
-    //   line: { color: '#00FF00' },
-    //   xaxis: 'x2',
-    //   yaxis: 'y2'
-    // },
+    {
+      x: dates,
+      y: kLineArr.map(k => k.VOLUMEOSCILLATOR),
+      mode: 'lines',
+      name: 'VOLUMEOSCILLATOR',
+      line: { color: '#000000' },
+      xaxis: 'x2',
+      yaxis: 'y2'
+    },
     {
       x: dates,
       y: kLineArr.map(k => k.RSI14),
@@ -112,15 +119,6 @@ exports.graphToImg = kLineArr => {
       mode: 'lines',
       name: 'ADX14',
       line: { color: '#FF0000' },
-      xaxis: 'x3',
-      yaxis: 'y3'
-    },
-    {
-      x: dates,
-      y: kLineArr.map(k => k.MFI14),
-      mode: 'lines',
-      name: 'MFI14',
-      line: { color: '#00FF00' },
       xaxis: 'x3',
       yaxis: 'y3'
     }
@@ -141,7 +139,7 @@ exports.graphToImg = kLineArr => {
   };
   plotly.getImage(figure, imgOptions, (error, imageStream) => {
     if (error) console.log(error);
-    const fileStream = fs.createWriteStream(`plot.png`);
+    const fileStream = fs.createWriteStream(`${fileName}.png`);
     imageStream.pipe(fileStream);
   });
 };

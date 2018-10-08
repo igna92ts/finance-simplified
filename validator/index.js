@@ -1,45 +1,42 @@
-const { MFI, SMA, EMA, RSI, ADX } = require('technicalindicators'),
-  { getKLineHistory } = require('../binance'),
-  { checkBuySell, assignIndicator } = require('../index2'),
-  { graphToImg } = require('../chart');
+const errors = require('../errors');
 
-const run = async () => {
-  const symbol = 'ADAETH';
-  let historicalLines = await getKLineHistory(symbol, 500);
-  const prices = historicalLines.map(t => t.price);
-  const high = historicalLines.map(t => t.highPrice);
-  const low = historicalLines.map(t => t.lowPrice);
-  const volume = historicalLines.map(t => t.volume);
-  historicalLines = assignIndicator(historicalLines, EMA.calculate({ period: 8, values: prices }), 'EMA8');
-  historicalLines = assignIndicator(historicalLines, EMA.calculate({ period: 13, values: prices }), 'EMA13');
-  historicalLines = assignIndicator(historicalLines, EMA.calculate({ period: 21, values: prices }), 'EMA21');
-  historicalLines = assignIndicator(historicalLines, EMA.calculate({ period: 55, values: prices }), 'EMA55');
-  const rsi = RSI.calculate({ period: 14, values: prices });
-  historicalLines = assignIndicator(historicalLines, rsi, 'RSI14');
-  historicalLines = assignIndicator(
-    historicalLines,
-    ADX.calculate({ period: 14, close: prices, high, low }).map(e => e.adx),
-    'ADX14'
-  );
-  historicalLines = assignIndicator(
-    historicalLines,
-    MFI.calculate({ period: 14, volume, high, low, close: prices }),
-    'MFI14'
-  );
-  historicalLines = historicalLines.slice(100).reduce((res, h, index) => {
-    if (index === 0 || index === 1) return [...res, { ...h, action: 'NOTHING' }];
-    else {
-      return [
-        ...res,
-        checkBuySell(
-          symbol,
-          { ...h, tracker: [res[res.length - 2], res[res.length - 1]] },
-          res[res.length - 1].action
-        )
-      ];
-    }
-  }, []);
-  graphToImg(historicalLines);
+const operate = (symbol, action, currentPrice, money) => {
+  if (money[symbol] === undefined) money[symbol] = 0;
+  const fees = 0.001;
+  const buyAmount = 0.1;
+  if (action === 'BUY' && money.ETH > 0) {
+    money[symbol] += (money.ETH * buyAmount) / (currentPrice + currentPrice * fees);
+    money.ETH -= money.ETH * buyAmount;
+  }
+  if (action === 'SELL') {
+    money.ETH += money[symbol] * (currentPrice - currentPrice * fees);
+    money[symbol] = 0;
+  }
+  return money.ETH + money[symbol] * currentPrice;
 };
 
-run();
+const calculateReturns = data => {
+  const money = {
+    ETH: 5
+  };
+  let result = 5;
+  let previousAction = 'NOTHING';
+  data.forEach((d, index) => {
+    if (!d.action) throw errors.missingRequiredProperty('action');
+    if (!d.close) throw errors.missingRequiredProperty('close');
+    if (d.EMA8 === undefined || d.EMA55 === undefined) throw errors.missingRequiredProperty('EMA');
+    if (data[index - 1] && data[index - 1].EMA8 > data[index - 1].EMA55 && d.EMA8 < d.EMA55) {
+      result = operate('XRPETH', 'SELL', d.close, money);
+      previousAction = 'SELL';
+    }
+    if (previousAction !== d.action) {
+      result = operate('XRPETH', d.action, d.close, money);
+      previousAction = d.action;
+    }
+  });
+  return result;
+};
+
+module.exports = {
+  calculateReturns
+};

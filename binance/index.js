@@ -38,8 +38,12 @@ const symbolVolumeFilter = async symbols => {
         .catch(console.log);
     })
   );
-  return symbolStats.filter(s => s.volume > MINIMUM_VOLUME).map(s => s.symbol);
+  return symbolStats
+    .filter(s => s.volume > MINIMUM_VOLUME)
+    .filter(s => !['PAXETH'].some(f => s.symbol === f))
+    .map(s => s.symbol);
 };
+
 const fetchExchangeInfo = async () => {
   const QUOTE_ASSET = 'ETH';
   const exchangeInfo = await request
@@ -59,11 +63,13 @@ const fetchExchangeInfo = async () => {
   return symbolVolumeFilter(symbols);
 };
 
-const K_LINE_INTERVAL = '1m'; // MINUTES
-const getKLineHistory = (symbol, limit = 100) => {
+const K_LINE_INTERVAL = '15m'; // MINUTES
+const getKLineHistory = (symbol, limit = 100, endTime) => {
   return request
     .get({
-      url: `https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=${K_LINE_INTERVAL}&limit=${limit}`,
+      url: `https://api.binance.com/api/v1/klines?symbol=${symbol}&interval=${K_LINE_INTERVAL}&limit=${limit}${
+        endTime ? `&endTime=${endTime}` : ''
+      }`,
       headers: {
         'X-MBX-APIKEY': binanceKey
       },
@@ -72,14 +78,27 @@ const getKLineHistory = (symbol, limit = 100) => {
     .then(kLineData =>
       kLineData.map(k => ({
         id: k[0],
-        highPrice: parseFloat(k[2]),
-        lowPrice: parseFloat(k[3]),
-        price: parseFloat(k[4]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4]),
         closeTime: k[6],
-        volume: parseFloat(k[5])
+        volume: parseFloat(k[5]),
+        open: parseFloat(k[1])
       }))
     )
     .catch(console.log);
+};
+
+const fetchKLines = async (symbol, count, accumulator = [], endTime) => {
+  const history = await getKLineHistory(symbol, 1000, endTime);
+  accumulator = [...history, ...accumulator];
+  if (accumulator.length < count) {
+    const [firstLine] = history;
+    if (!firstLine) console.log(symbol);
+    return fetchKLines(symbol, count, accumulator, firstLine.id - 1);
+  } else {
+    return accumulator;
+  }
 };
 
 const setupKLineSocket = (symbol, cb) => {
@@ -101,4 +120,4 @@ const setupKLineSocket = (symbol, cb) => {
   });
 };
 
-module.exports = { setupKLineSocket, getKLineHistory, fetchExchangeInfo };
+module.exports = { setupKLineSocket, getKLineHistory, fetchKLines, fetchExchangeInfo };

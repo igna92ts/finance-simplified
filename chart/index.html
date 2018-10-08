@@ -5,96 +5,124 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js"></script>
   </head>
   <body>
-    <div id="graph"></div>
-    <div id="graph2"></div>
+    <div id="graph" style="width: 2400px; height: 1600px;"></div>
     <script>
 
 
      const socket = io('localhost:8080');
      let exists = false;
-     socket.on('data', data => {
-       var time = new Date();
-       if (!exists) {
-         var emaData = [{
-           x: [time],
-           y: [data.EMA8],
+     socket.on('data', kLineArr => {
+       const dates = kLineArr.map(k => new Date(k.id));
+       const traces = [
+         {
+           x: dates,
+           y: kLineArr.map(k => k.EMA8),
+           line: { color: '#0000FF' },
            mode: 'lines',
-           name: 'EMA8',
-           line: {color: '#0000FF'}
-         }, {
-           x: [time],
-           y: [data.EMA13],
+           name: 'EMA8'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.EMA13),
+           line: { color: '#00FF00' },
            mode: 'lines',
-           name: 'EMA13',
-           line: {color: '#00FF00'}
-         }, {
-           x: [time],
-           y: [data.EMA21],
+           name: 'EMA13'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.EMA21),
+           line: { color: '#FFFF00' },
            mode: 'lines',
-           name: 'EMA21',
-           line: {color: '#FFFF00'}
-         }, {
-           x: [time],
-           y: [data.EMA55],
+           name: 'EMA21'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.EMA55),
+           line: { color: '#FF0000' },
            mode: 'lines',
-           name: 'EMA55',
-           line: {color: '#FF0000'}
-         }, {
-          x: [time],
-          y: [data.currentPrice],
-          mode: 'markers',
-          name: 'BUY',
-          marker: {color: '#00FF00'}
-        }, {
-          x: [time],
-          y: [data.currentPrice],
-          mode: 'markers',
-          name: 'SELL',
-          marker: {color: '#FF0000'}
-        }, {
-          x: [time],
-          y: [data.currentPrice],
-          mode: 'markers',
-          name: 'NOTHING',
-          marker: {color: '#000000'}
-        }]
-         Plotly.plot('graph', emaData);
-
-         var rsiData = [{
-           x: [time],
-           y: [data.STOCHRSI.percentK],
+           name: 'EMA55'
+           // xaxis: 'x2',
+           // yaxis: 'y2'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.MIDDLEBB21),
+           line: { color: '#000000' },
            mode: 'lines',
-           name: 'K',
-           line: {color: '#0000FF'}
-         }, {
-           x: [time],
-           y: [data.STOCHRSI.percentD],
+           name: 'MIDDLEBB21'
+           // xaxis: 'x2',
+           // yaxis: 'y2'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.UPPERBB21),
+           line: { color: '#000000' },
            mode: 'lines',
-           name: 'D',
-           line: {color: '#00FF00'}
-         }]
-         Plotly.plot('graph2', rsiData);
-
-         exists = true;
-       } else {
-         // BUY = 4 SELL = 5
-        var updateEma = {
-          x:  [[time], [time], [time], [time], [time]],
-          y: [[data.EMA8], [data.EMA13], [data.EMA21], [data.EMA55], [data.currentPrice]]
-        }
-        var element = 6;
-         if (data.action === 'SELL') element = 5;
-         if (data.action === 'BUY') element = 4
-        Plotly.extendTraces('graph', updateEma, [0, 1, 2, 3, element])
-
-         var updateRsi = {
-           x:  [[time], [time]],
-           y: [[data.STOCHRSI.percentK], [data.STOCHRSI.percentD]]
+           name: 'UPPERBB21'
+           // xaxis: 'x2',
+           // yaxis: 'y2'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.LOWERBB21),
+           line: { color: '#000000' },
+           mode: 'lines',
+           name: 'LOWERBB21'
+           // xaxis: 'x2',
+           // yaxis: 'y2'
+         },
+         {
+           x: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => new Date(k.id)),
+           y: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => k.close),
+           mode: 'markers',
+           name: 'BUY',
+           marker: { color: '#FF0000' }
+         },
+         {
+           x: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => new Date(k.id)),
+           y: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => k.close),
+           mode: 'markers',
+           name: 'SELL',
+           marker: { color: '#000000' }
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.VOLUMEOSCILLATOR),
+           mode: 'lines',
+           name: 'VOLUMEOSCILLATOR',
+           line: { color: '#000000' },
+           xaxis: 'x2',
+           yaxis: 'y2'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.RSI14),
+           mode: 'lines',
+           name: 'RSI14',
+           line: { color: '#00FF00' },
+           xaxis: 'x2',
+           yaxis: 'y2'
+         },
+         {
+           x: dates,
+           y: kLineArr.map(k => k.ADX14),
+           mode: 'lines',
+           name: 'ADX14',
+           line: { color: '#FF0000' },
+           xaxis: 'x3',
+           yaxis: 'y3'
          }
-
-         Plotly.extendTraces('graph2', updateRsi, [0, 1])
-           }
-         });
+       ];
+       const layout = {
+         yaxis: { domain: [0, 0.266] },
+         legend: { traceorder: 'reversed' },
+         xaxis3: { anchor: 'y3' },
+         xaxis2: { anchor: 'y2' },
+         yaxis2: { domain: [0.366, 0.633] },
+         yaxis3: { domain: [0.733, 1] }
+       };
+       Plotly.newPlot('graph', traces, layout);
+     });
     </script>
   </body>
 </html>
