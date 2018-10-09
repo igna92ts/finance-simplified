@@ -1,7 +1,7 @@
 const { setupKLineSocket, fetchKLines, fetchExchangeInfo } = require('./binance'),
   { advancedFeatures } = require('./indicators'),
   { calculateReturns } = require('./validator'),
-  { setGraphingServer } = require('./chart');
+  { setGraphingServer, graphToImg } = require('./chart');
 
 const CHART_URL = 'https://www.binance.com/en/trade/pro/';
 
@@ -45,7 +45,10 @@ const setChartApi = async trackerObj => {
         return {
           symbol: k,
           action: trackerObj[k].action,
-          signalCount: 1,
+          signalCount: [...trackerObj[k].tracker].reverse().reduce((res, e, i) => {
+            if (e.action !== trackerObj[k].action && res === 0) res = i;
+            return res;
+          }, 0),
           chartUrl: `${CHART_URL}${[singleSymbol, '_', 'ETH'].join('')}`
         };
       });
@@ -55,7 +58,7 @@ const setChartApi = async trackerObj => {
 
 const setKLineSockets = (symbols, trackerObj, emit) => {
   const promises = symbols.map(async s => {
-    const kLineHistory = await fetchKLines(s, 200);
+    const kLineHistory = await fetchKLines(s, 500);
     trackerObj[s] = {
       tracker: advancedFeatures(kLineHistory),
       action: 'NOTHING'
@@ -67,10 +70,15 @@ const setKLineSockets = (symbols, trackerObj, emit) => {
 
 const run = async () => {
   try {
-    const trackerObj = {};
-    const emit = await setChartApi(trackerObj);
-    const symbols = await fetchExchangeInfo();
-    await setKLineSockets(symbols, trackerObj, emit);
+    const kLineHistory = await fetchKLines('XRPETH', 500);
+    const advancedHistoric = advancedFeatures(kLineHistory);
+    console.log(calculateReturns(advancedHistoric));
+    // await graphToImg(advancedHistoric, 'test');
+    // const trackerObj = {};
+    // const emit = await setChartApi(trackerObj);
+    // setInterval(() => emit(), 10000);
+    // const symbols = await fetchExchangeInfo();
+    // await setKLineSockets(symbols, trackerObj, emit);
   } catch (err) {
     console.log(err);
   }
