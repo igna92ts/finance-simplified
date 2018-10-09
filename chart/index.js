@@ -5,17 +5,13 @@ const http = require('http'),
 
 exports.setGraphingServer = () => {
   return new Promise((resolve, reject) => {
-    const handler = (req, res) => {
-      fs.readFile(`${__dirname}/index.html`, (err, data) => {
-        if (err) {
-          res.writeHead(500);
-          return res.end('Error loading index.html');
-        }
-        res.writeHead(200);
-        return res.end(data);
-      });
-    };
-    const app = http.createServer(handler);
+    // const handler = (req, res) => {
+    //   fs.readFile(`${__dirname}/fronend/index.html`, (err, data) => {
+    //     res.writeHead(200);
+    //     return res.end(data);
+    //   });
+    // };
+    const app = http.createServer();
     app.listen(8080);
     const io = socketio(app);
 
@@ -95,6 +91,31 @@ exports.graphToImg = (kLineArr, fileName = 'plot') => {
       name: 'SELL',
       marker: { color: '#000000' }
     },
+    // {
+    //   x: kLineArr.filter(k => k.action && k.action === 'NOTHING').map(k => new Date(k.id)),
+    //   y: kLineArr.filter(k => k.action && k.action === 'NOTHING').map(k => k.price),
+    //   mode: 'markers',
+    //   name: 'NOTHING',
+    //   marker: { color: '#000000' }
+    // },
+    // {
+    //   x: dates,
+    //   y: kLineArr.map(k => k.STOCHRSI.percentK),
+    //   mode: 'lines',
+    //   name: 'K',
+    //   line: { color: '#0000FF' },
+    //   xaxis: 'x2',
+    //   yaxis: 'y2'
+    // },
+    // {
+    //   x: dates,
+    //   y: kLineArr.map(k => k.STOCHRSI.percentD),
+    //   mode: 'lines',
+    //   name: 'D',
+    //   line: { color: '#00FF00' },
+    //   xaxis: 'x2',
+    //   yaxis: 'y2'
+    // },
     {
       x: dates,
       y: kLineArr.map(k => k.VOLUMEOSCILLATOR),

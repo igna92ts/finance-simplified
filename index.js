@@ -3,7 +3,9 @@ const { setupKLineSocket, fetchKLines, fetchExchangeInfo } = require('./binance'
   { calculateReturns } = require('./validator'),
   { setGraphingServer } = require('./chart');
 
-const processKLineData = (kLineData, trackerObj) => {
+const CHART_URL = 'https://www.binance.com/en/trade/pro/';
+
+const processKLineData = (kLineData, trackerObj, emit) => {
   const symbol = kLineData.s;
   trackerObj[symbol] = {
     ...trackerObj[symbol],
@@ -23,23 +25,42 @@ const processKLineData = (kLineData, trackerObj) => {
   if (kLineData.x) {
     trackerObj[symbol].tracker = advancedFeatures(trackerObj[symbol].tracker);
     trackerObj[symbol].action = trackerObj[symbol].tracker[trackerObj[symbol].tracker.length - 1].action;
-    console.log(
-      JSON.stringify({
-        SELL: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'SELL'),
-        BUY: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'BUY')
-      })
-    );
+    emit([{ symbol: 'a', action: 'b', signalCount: 1, chartUrl: `${CHART_URL}VET_ETH` }]);
+    // console.log(
+    //   JSON.stringify({
+    //     SELL: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'SELL'),
+    //     BUY: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'BUY')
+    //   })
+    // );
   }
 };
 
-const setKLineSockets = (symbols, trackerObj) => {
+const setChartApi = async trackerObj => {
+  const emit = await setGraphingServer();
+  return () => {
+    const data = Object.keys(trackerObj)
+      .filter(k => trackerObj[k].action !== 'NOTHING')
+      .map(k => {
+        const [singleSymbol] = k.split('ETH');
+        return {
+          symbol: k,
+          action: trackerObj[k].action,
+          signalCount: 1,
+          chartUrl: `${CHART_URL}${[singleSymbol, '_', 'ETH'].join('')}`
+        };
+      });
+    emit(data);
+  };
+};
+
+const setKLineSockets = (symbols, trackerObj, emit) => {
   const promises = symbols.map(async s => {
     const kLineHistory = await fetchKLines(s, 200);
     trackerObj[s] = {
       tracker: advancedFeatures(kLineHistory),
       action: 'NOTHING'
     };
-    return setupKLineSocket(s, kLineData => processKLineData(kLineData, trackerObj));
+    return setupKLineSocket(s, kLineData => processKLineData(kLineData, trackerObj, emit));
   });
   return Promise.all(promises);
 };
@@ -47,8 +68,9 @@ const setKLineSockets = (symbols, trackerObj) => {
 const run = async () => {
   try {
     const trackerObj = {};
+    const emit = await setChartApi(trackerObj);
     const symbols = await fetchExchangeInfo();
-    await setKLineSockets(symbols, trackerObj);
+    await setKLineSockets(symbols, trackerObj, emit);
   } catch (err) {
     console.log(err);
   }
