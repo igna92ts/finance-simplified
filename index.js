@@ -25,7 +25,7 @@ const processKLineData = (kLineData, trackerObj, emit) => {
   if (kLineData.x) {
     trackerObj[symbol].tracker = advancedFeatures(trackerObj[symbol].tracker);
     trackerObj[symbol].action = trackerObj[symbol].tracker[trackerObj[symbol].tracker.length - 1].action;
-    emit([{ symbol: 'a', action: 'b', signalCount: 1, chartUrl: `${CHART_URL}VET_ETH` }]);
+    emit();
     // console.log(
     //   JSON.stringify({
     //     SELL: Object.keys(trackerObj).filter(k => trackerObj[k].action === 'SELL'),

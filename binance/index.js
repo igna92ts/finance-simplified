@@ -63,7 +63,7 @@ const fetchExchangeInfo = async () => {
   return symbolVolumeFilter(symbols);
 };
 
-const K_LINE_INTERVAL = '1m'; // MINUTES
+const K_LINE_INTERVAL = '15m'; // MINUTES
 const getKLineHistory = (symbol, limit = 100, endTime) => {
   return request
     .get({

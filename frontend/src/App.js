@@ -17,8 +17,19 @@ const styles = theme => ({
   },
   table: {
     minWidth: 700,
-  },
+  }
 });
+
+const customStyles = {
+  buy: {
+    background: 'green',
+    color: 'white'
+  },
+  sell: {
+    background: 'red',
+    color: 'white'
+  }
+}
 
 class SimpleTable extends React.Component {
   constructor(props) {
@@ -57,7 +68,7 @@ class SimpleTable extends React.Component {
                   <TableCell component="th" scope="row">
                     {row.symbol}
                   </TableCell>
-                  <TableCell>{row.action}</TableCell>
+                  <TableCell style={ row.action === 'BUY' ? customStyles.buy : customStyles.sell }>{row.action}</TableCell>
                   <TableCell numeric>{row.signalCount}</TableCell>
                   <TableCell numeric>
                     <a rel="noopener noreferrer" target="_blank" href={row.chartUrl}>CHART</a>
