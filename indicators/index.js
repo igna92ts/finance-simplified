@@ -1,5 +1,7 @@
 const { detectPatterns } = require('./patterns'),
   {
+    SMA,
+    PSAR,
     PROC,
     VROC,
     KST,
@@ -12,7 +14,7 @@ const { detectPatterns } = require('./patterns'),
     STOCH,
     VWAP,
     VO,
-    heikinAshiConversion
+    HEIKINASHICANDLE
   } = require('./indicators'),
   rules = require('./rules'),
   errors = require('../errors');
@@ -38,24 +40,30 @@ const periods = {
   MFI: 14,
   BB: 21,
   STOCH: 14,
-  ROC: 8
+  ROC: 8,
+  SMA: [21, 55, 233]
 };
 
 const basicIndicators = historic => {
   return combineIndicators([
     historic,
-    EMA(historic, periods.EMA[0]),
-    EMA(historic, periods.EMA[1]),
-    EMA(historic, periods.EMA[2]),
-    EMA(historic, periods.EMA[3])
-    // RSI(historic, periods.RSI),
-    // ADX(historic, periods.ADX),
+    SMA(historic, periods.SMA[0]),
+    SMA(historic, periods.SMA[1]),
+    SMA(historic, periods.SMA[2]),
+    // EMA(historic, periods.EMA[0]),
+    // EMA(historic, periods.EMA[1]),
+    // EMA(historic, periods.EMA[2]),
+    // EMA(historic, periods.EMA[3]),
+    RSI(historic, periods.RSI),
+    ADX(historic, periods.ADX),
+    // PSAR(historic),
+    HEIKINASHICANDLE(historic),
     // MFI(historic, periods.MFI),
     // BB(historic, periods.BB),
-    // STOCH(historic, periods.STOCH),
+    STOCH(historic, periods.STOCH)
     // VWAP(historic),
     // VO(historic),
-    // KST(historic),
+    // KST(historic)
     // AO(historic),
     // PROC(historic, periods.ROC),
     // VROC(historic, periods.ROC)
@@ -64,15 +72,16 @@ const basicIndicators = historic => {
 
 const scoreData = historic => {
   return historic.map((h, index) => {
-    let score = 0;
-    // score += rules.RSI(historic, index, periods.RSI);
-    score += rules.EMA(historic, index, periods.EMA);
-    // score += rules.KST(historic, index);
-    // score += rules.ADX(historic, index, periods.ADX);
+    const results = [];
+    // results.push(rules.RSI(historic, index, periods.RSI));
+    // results.push(rules.EMA(historic, index, periods.EMA));
+    results.push(rules.STOCH(historic, index, periods.STOCH));
+    // results.push(rules.PSAR(historic, index));
+    // results.push(rules.ADX(historic, index, periods.ADX));
+    // results.push(rules.HEIKINCANDLE(historic, index));
     // score += rules.VWAP(historic, index);
-    if (score > 0) return { ...h, action: 'BUY' };
-    if (historic[index - 1] && historic[index - 1].EMA8 > historic[index - 1].EMA55 && h.EMA8 < h.EMA55)
-      return { ...h, action: 'SELL' };
+    results.push(rules.SMA(historic, index, periods.SMA));
+    if (!results.some(r => r === false)) return { ...h, action: 'BUY' };
     return { ...h, action: 'NOTHING' };
   });
 };
@@ -82,6 +91,7 @@ const advancedFeatures = historic => {
   tempHistoric = basicIndicators(tempHistoric);
   tempHistoric = detectPatterns(tempHistoric);
   tempHistoric = scoreData(tempHistoric);
+  rules.RSI(tempHistoric, 50, periods.RSI);
 
   return tempHistoric;
 };

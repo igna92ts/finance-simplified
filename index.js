@@ -1,6 +1,7 @@
 const { setupKLineSocket, fetchKLines, fetchExchangeInfo } = require('./binance'),
   { advancedFeatures } = require('./indicators'),
-  { calculateReturns } = require('./validator'),
+  { realBuySignals, sellLogic } = require('./validator'),
+  bayes = require('./bayes'),
   { setGraphingServer, graphToImg } = require('./chart');
 
 const CHART_URL = 'https://www.binance.com/en/trade/pro/';
@@ -70,15 +71,46 @@ const setKLineSockets = (symbols, trackerObj, emit) => {
 
 const run = async () => {
   try {
-    const kLineHistory = await fetchKLines('XRPETH', 500);
-    const advancedHistoric = advancedFeatures(kLineHistory);
-    console.log(calculateReturns(advancedHistoric));
-    // await graphToImg(advancedHistoric, 'test');
-    // const trackerObj = {};
-    // const emit = await setChartApi(trackerObj);
-    // setInterval(() => emit(), 10000);
-    // const symbols = await fetchExchangeInfo();
-    // await setKLineSockets(symbols, trackerObj, emit);
+    const kLineHistory = await fetchKLines('ADAETH', 5000);
+    const advancedHistoric = advancedFeatures(kLineHistory).slice(250);
+    console.log(sellLogic(advancedHistoric));
+    const realSignalHistoric = realBuySignals(advancedHistoric);
+    const bayesianHistoric = advancedHistoric.map((a, index) => {
+      const bayesianClassifier = bayes.buildClassifier(
+        realSignalHistoric
+          .slice(0, index)
+          .map(r => [r.reality, r.RSI14, r.STOCHK14, r.STOCHD14, r.ADX14, r.MDI14, r.PDI14]),
+        {
+          type: 'array',
+          items: {
+            type: 'array',
+            items: [
+              { type: 'string' },
+              { type: 'number' },
+              { type: 'number' },
+              { type: 'number' },
+              { type: 'number' },
+              { type: 'number' },
+              { type: 'number' }
+            ],
+            additionalItems: false
+          }
+        }
+      );
+      const certainty = bayesianClassifier.classify([
+        'BUY',
+        a.RSI14,
+        a.STOCHK14,
+        a.STOCHD14,
+        a.ADX14,
+        a.MDI14,
+        a.PDI14
+      ]);
+      console.log(certainty * 100);
+      return { ...a, certainty, action: certainty > 0.01 || a.action === 'SELL' ? a.action : 'NOTHING' };
+    });
+    await graphToImg(realSignalHistoric.map(e => ({ ...e, action: e.reality })).slice(3000), 'expected');
+    await graphToImg(bayesianHistoric.slice(3000), 'predicted');
   } catch (err) {
     console.log(err);
   }

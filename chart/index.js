@@ -23,11 +23,11 @@ exports.setGraphingServer = () => {
 
 exports.lineGraph = (fileName = 'line', dataSets) => {
   const traces = dataSets.map(d => {
-    const { name, values } = d;
+    const { name, values, mode, dates } = d;
     return {
-      x: values.map((v, index) => index),
+      x: dates || values.map((v, index) => index),
       y: values,
-      mode: 'lines',
+      mode: mode || 'lines',
       name
     };
   });
@@ -49,46 +49,44 @@ exports.graphToImg = (kLineArr, fileName = 'plot') => {
   const traces = [
     {
       x: dates,
-      y: kLineArr.map(k => k.EMA8),
+      y: kLineArr.map(k => k.close),
+      line: { color: '#000000' },
+      mode: 'lines',
+      name: 'PRICE'
+    },
+    {
+      x: dates,
+      y: kLineArr.map(k => k.SMA55),
       line: { color: '#0000FF' },
       mode: 'lines',
-      name: 'EMA8'
+      name: 'SMA55'
     },
     {
       x: dates,
-      y: kLineArr.map(k => k.EMA13),
+      y: kLineArr.map(k => k.SMA233),
       line: { color: '#00FF00' },
       mode: 'lines',
-      name: 'EMA13'
-    },
-    {
-      x: dates,
-      y: kLineArr.map(k => k.EMA21),
-      line: { color: '#FFFF00' },
-      mode: 'lines',
-      name: 'EMA21'
-    },
-    {
-      x: dates,
-      y: kLineArr.map(k => k.EMA55),
-      line: { color: '#FF0000' },
-      mode: 'lines',
-      name: 'EMA55'
-      // xaxis: 'x2',
-      // yaxis: 'y2'
+      name: 'SMA233'
     },
     {
       x: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => new Date(k.id)),
       y: kLineArr.filter(k => k.action && k.action === 'BUY').map(k => k.close),
       mode: 'markers',
       name: 'BUY',
-      marker: { color: '#FF0000' }
+      marker: { color: '#00FF00' }
     },
     {
       x: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => new Date(k.id)),
       y: kLineArr.filter(k => k.action && k.action === 'SELL').map(k => k.close),
       mode: 'markers',
       name: 'SELL',
+      marker: { color: '#FF0000' }
+    },
+    {
+      x: dates,
+      y: kLineArr.map(k => k.PSAR),
+      mode: 'markers',
+      name: 'PSAR',
       marker: { color: '#000000' }
     },
     // {
@@ -118,30 +116,21 @@ exports.graphToImg = (kLineArr, fileName = 'plot') => {
     // },
     {
       x: dates,
-      y: kLineArr.map(k => k.VOLUMEOSCILLATOR),
-      mode: 'lines',
-      name: 'VOLUMEOSCILLATOR',
-      line: { color: '#000000' },
-      xaxis: 'x2',
-      yaxis: 'y2'
-    },
-    {
-      x: dates,
       y: kLineArr.map(k => k.RSI14),
       mode: 'lines',
       name: 'RSI14',
       line: { color: '#00FF00' },
-      xaxis: 'x2',
-      yaxis: 'y2'
+      xaxis: 'x3',
+      yaxis: 'y3'
     },
     {
       x: dates,
-      y: kLineArr.map(k => k.ADX14),
+      y: kLineArr.map(k => k.certainty),
       mode: 'lines',
-      name: 'ADX14',
+      name: 'BAYES',
       line: { color: '#FF0000' },
-      xaxis: 'x3',
-      yaxis: 'y3'
+      xaxis: 'x2',
+      yaxis: 'y2'
     }
   ];
   const layout = {

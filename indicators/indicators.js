@@ -3,6 +3,7 @@ const {
     Stochastic: STOCH,
     AwesomeOscillator: AO,
     VWAP,
+    PSAR,
     OBV,
     KST,
     RSI,
@@ -31,6 +32,16 @@ exports.EMA = (historic, period) => {
   });
   const ema = EMA.calculate({ period, values });
   return exports.fill(historic, ema, `EMA${period}`);
+};
+
+exports.SMA = (historic, period) => {
+  if (!period) throw errors.missingRequiredProperty('period');
+  const values = historic.map(h => {
+    if (h.close === undefined) throw errors.missingRequiredProperty('close');
+    return h.close;
+  });
+  const ema = SMA.calculate({ period, values });
+  return exports.fill(historic, ema, `SMA${period}`);
 };
 
 exports.RSI = (historic, period) => {
@@ -219,7 +230,20 @@ exports.AO = historic => {
   return exports.fill(historic, ao, 'AO');
 };
 
-exports.heikinAshiConversion = historic => {
+exports.PSAR = historic => {
+  const high = historic.map(h => {
+    if (h.high === undefined) throw errors.missingRequiredProperty('high');
+    return h.high;
+  });
+  const low = historic.map(h => {
+    if (h.low === undefined) throw errors.missingRequiredProperty('low');
+    return h.low;
+  });
+  const psar = PSAR.calculate({ high, low, step: 0.02, max: 0.02 });
+  return exports.fill(historic, psar, 'PSAR');
+};
+
+exports.HEIKINASHICANDLE = historic => {
   const volume = historic.map(h => h.volume);
   const open = historic.map(h => h.open);
   const high = historic.map(h => h.high);
@@ -229,11 +253,7 @@ exports.heikinAshiConversion = historic => {
   return historic.map((h, index) => {
     return {
       ...h,
-      open: chart.open[index],
-      high: chart.high[index],
-      low: chart.low[index],
-      close: chart.close[index],
-      volume: chart.volume[index]
+      HEIKINCANDLE: chart.close[index] >= chart.open[index] ? 'GREEN' : 'RED'
     };
   });
 };

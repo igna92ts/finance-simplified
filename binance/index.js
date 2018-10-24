@@ -63,7 +63,7 @@ const fetchExchangeInfo = async () => {
   return symbolVolumeFilter(symbols);
 };
 
-const K_LINE_INTERVAL = '4h'; // MINUTES
+const K_LINE_INTERVAL = '15m'; // MINUTES
 const getKLineHistory = (symbol, limit = 100, endTime) => {
   return request
     .get({
@@ -90,7 +90,7 @@ const getKLineHistory = (symbol, limit = 100, endTime) => {
 };
 
 const fetchKLines = async (symbol, count, accumulator = [], endTime) => {
-  const history = await getKLineHistory(symbol, 1000, endTime);
+  const history = await getKLineHistory(symbol, 100, endTime);
   accumulator = [...history, ...accumulator];
   if (accumulator.length < count) {
     const [firstLine] = history;

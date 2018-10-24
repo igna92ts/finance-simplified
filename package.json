@@ -10,10 +10,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "ajv": "^6.5.4",
     "aws-sdk": "^2.323.0",
     "dotenv": "^6.0.0",
     "jszip": "^3.1.5",
     "multi-progress": "^2.0.0",
+    "node-bayes": "^1.1.0",
     "ora": "^3.0.0",
     "plotly": "^1.0.6",
     "plotly.js": "^1.41.3",
